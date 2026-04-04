@@ -1,0 +1,30 @@
+# SignalDesk — Python dependencies
+# Python 3.12 required (pandas-ta/numba incompatible with 3.14+)
+# Install: pip install -r requirements.txt
+#          pip install "uvicorn[standard]"
+
+# ── Data ─────────────────────────────────────────────────────────────────────
+yfinance>=0.2.36
+pandas>=2.0.0
+pandas-ta>=0.3.14b
+fredapi>=0.5.1
+
+# ── News ─────────────────────────────────────────────────────────────────────
+newsapi-python>=0.2.7
+requests>=2.31.0
+
+# ── AI / LM Studio client ────────────────────────────────────────────────────
+openai>=1.14.0          # OpenAI-compatible client for LM Studio local API
+
+# ── Backend ──────────────────────────────────────────────────────────────────
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+
+# ── Utilities ────────────────────────────────────────────────────────────────
+python-dotenv>=1.0.0
+
+# ── Not used (evaluated and dropped) ────────────────────────────────────────
+# praw          — Reddit API blocked by network security
+# stocktwits    — blocked by Cloudflare (no official Python client)
+# boto3         — AWS S3 backup optional, not installed by default
+# tweepy        — Twitter/X API $100/month, not worth it

@@ -1,0 +1,41 @@
+# ── Secrets — never commit ───────────────────────────────────────────────────
+pipeline/config.py
+
+# ── Python ───────────────────────────────────────────────────────────────────
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# ── Data — ignore DB and cache contents, keep structure ──────────────────────
+data/db/*.db
+data/db/*.sqlite
+data/db/*.sqlite3
+data/cache/*
+!data/cache/.gitkeep
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+logs/
+*.log
+
+# ── macOS ────────────────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ── VS Code ──────────────────────────────────────────────────────────────────
+.vscode/
+*.code-workspace
+
+# ── Environment ──────────────────────────────────────────────────────────────
+.env
+.env.*
+
+# ── Test cache ───────────────────────────────────────────────────────────────
+.pytest_cache/
