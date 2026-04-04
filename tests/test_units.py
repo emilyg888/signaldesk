@@ -75,21 +75,61 @@ class TestConfig:
 
 class TestSocialFetcher:
 
-    def test_returns_empty_list(self):
+    def test_returns_empty_list_when_no_token(self, monkeypatch):
+        from pipeline import social_fetcher
+        from pipeline.config import API_KEYS
+        monkeypatch.setitem(API_KEYS, "x_bearer_token", "YOUR_X_BEARER_TOKEN")
         from pipeline.social_fetcher import fetch_social
         result = fetch_social("AAPL")
         assert result == []
 
     def test_returns_list_type(self):
         from pipeline.social_fetcher import fetch_social
-        result = fetch_social("BTC-USD")
+        with patch("pipeline.social_fetcher.requests.get") as mock_get:
+            mock_get.return_value.status_code = 200
+            mock_get.return_value.json.return_value = {"data": [], "includes": {}}
+            result = fetch_social("BTC-USD")
         assert isinstance(result, list)
 
     def test_handles_any_ticker(self):
         from pipeline.social_fetcher import fetch_social
-        for ticker in ["AAPL", "BTC-USD", "EURUSD=X", "UNKNOWN"]:
-            result = fetch_social(ticker)
-            assert isinstance(result, list)
+        with patch("pipeline.social_fetcher.requests.get") as mock_get:
+            mock_get.return_value.status_code = 200
+            mock_get.return_value.json.return_value = {"data": [], "includes": {}}
+            for ticker in ["AAPL", "BTC-USD", "EURUSD=X", "UNKNOWN"]:
+                result = fetch_social(ticker)
+                assert isinstance(result, list)
+
+    def test_returns_posts_when_api_succeeds(self):
+        from pipeline.social_fetcher import fetch_social
+        mock_data = {
+            "data": [{"id": "123", "text": "$AAPL bullish setup", "author_id": "u1",
+                      "created_at": "2026-01-01T09:00:00Z",
+                      "public_metrics": {"like_count": 10, "retweet_count": 2,
+                                         "reply_count": 1, "quote_count": 0}}],
+            "includes": {"users": [{"id": "u1", "verified": False,
+                                    "public_metrics": {"followers_count": 5000}}]}
+        }
+        with patch("pipeline.social_fetcher.requests.get") as mock_get:
+            mock_get.return_value.status_code = 200
+            mock_get.return_value.json.return_value = mock_data
+            result = fetch_social("AAPL")
+        assert len(result) == 1
+        assert result[0]["title"] == "$AAPL bullish setup"
+
+    def test_rate_limit_returns_empty(self):
+        from pipeline.social_fetcher import fetch_social
+        with patch("pipeline.social_fetcher.requests.get") as mock_get:
+            mock_get.return_value.status_code = 429
+            result = fetch_social("AAPL")
+        assert result == []
+
+    def test_api_error_returns_empty(self):
+        from pipeline.social_fetcher import fetch_social
+        with patch("pipeline.social_fetcher.requests.get") as mock_get:
+            mock_get.side_effect = Exception("connection error")
+            result = fetch_social("AAPL")
+        assert result == []
 
 
 # ── Sentiment tests ───────────────────────────────────────────────────────────
@@ -290,3 +330,65 @@ class TestAiAnalyst:
         assert "TECHNICAL" in prompt
         assert "SENTIMENT" in prompt
         assert "MACRO" in prompt
+
+
+# ── Additional sentiment tests for X source blending ─────────────────────────
+
+class TestSentimentXBlending:
+
+    def _make_mock_response(self, score=65, label="Bullish", themes=None):
+        mock_resp = MagicMock()
+        mock_resp.choices[0].message.content = json.dumps({
+            "score": score, "label": label,
+            "key_themes": themes or ["AI", "earnings"],
+        })
+        return mock_resp
+
+    def test_x_posts_blended_when_available(self):
+        from pipeline.sentiment import score_sentiment
+        social = [{"title": "BTC mooning right now!!"}]
+        with patch("pipeline.sentiment.client") as mock_client:
+            mock_client.chat.completions.create.return_value = \
+                self._make_mock_response(score=70)
+            result = score_sentiment(
+                [{"headline": "Bitcoin rally continues"}],
+                social,
+                "BTC-USD"
+            )
+        assert result["sources"]["x"] is not None
+
+    def test_x_source_is_none_when_no_posts(self):
+        from pipeline.sentiment import score_sentiment
+        with patch("pipeline.sentiment.client") as mock_client:
+            mock_client.chat.completions.create.return_value = \
+                self._make_mock_response(score=60)
+            result = score_sentiment([{"headline": "test"}], [], "AAPL")
+        assert result["sources"]["x"] is None
+
+    def test_no_sources_returns_neutral(self):
+        from pipeline.sentiment import score_sentiment
+        result = score_sentiment([], [], "AAPL")
+        assert result["composite_score"] == 50
+        assert result["label"] == "Neutral"
+
+    def test_themes_merged_from_both_sources(self):
+        from pipeline.sentiment import score_sentiment
+        social = [{"title": "crypto pump incoming"}]
+        with patch("pipeline.sentiment.client") as mock_client:
+            mock_client.chat.completions.create.side_effect = [
+                self._make_mock_response(score=65, themes=["momentum", "AI"]),
+                self._make_mock_response(score=70, themes=["FOMO", "rally"]),
+            ]
+            result = score_sentiment(
+                [{"headline": "test news"}], social, "BTC-USD"
+            )
+        assert len(result["key_themes"]) > 0
+
+    def test_x_only_sentiment_works(self):
+        from pipeline.sentiment import score_sentiment
+        social = [{"title": "NVDA to the moon"}]
+        with patch("pipeline.sentiment.client") as mock_client:
+            mock_client.chat.completions.create.return_value = \
+                self._make_mock_response(score=75)
+            result = score_sentiment([], social, "NVDA")
+        assert result["composite_score"] == 75

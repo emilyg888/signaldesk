@@ -33,8 +33,15 @@ SETTINGS = {
 }
 
 API_KEYS = {
-    "fred":    "YOUR_FRED_API_KEY_HERE",     # https://fredaccount.stlouisfed.org/apikeys
-    "newsapi": "YOUR_NEWSAPI_KEY_HERE",      # https://newsapi.org/register
+    # https://fredaccount.stlouisfed.org/apikeys
+    "fred": "TODO_FRED_API_KEY",
+
+    # https://newsapi.org/register
+    "newsapi": "TODO_NEWSAPI_KEY",
+
+    # X (Twitter) API — pay-per-use
+    # Get from: developer.x.com → your app → Keys and Tokens → Bearer Token
+    "x_bearer_token": "TODO_X_BEARER_TOKEN",
 }
 
 PATHS = {
