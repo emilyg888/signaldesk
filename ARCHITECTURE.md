@@ -1,6 +1,29 @@
 # SignalDesk — Architecture
 
 ## Overview
+## What Was Built
+
+| What | How |
+|------|-----|
+| Daily scheduler | launchd fires at 7:30 AM |
+| Price + OHLCV | yfinance (free) |
+| Macro indicators | FRED API (free) |
+| News headlines | NewsAPI (free) |
+| Technical analysis | pandas-ta — RSI, MACD, EMA, BB, ATR, Stochastic |
+| Sentiment scoring | Qwen2.5 14B via LM Studio (local, free) |
+| AI narrative + forecast | Qwen2.5 14B via LM Studio (local, free) |
+| Storage | SQLite with duplicate-safe daily upsert |
+| Backend | FastAPI on localhost:8000 |
+| Dashboard | Dark terminal UI — overview, detail, macro, watchlist |
+| Tests | 98/98 unit + integration tests passing |
+| Git | Committed to GitHub, API keys excluded |
+
+## Daily Routine
+
+- Mac wakes at 7:30 AM → launchd fires the pipeline automatically
+- LM Studio must be running with server started (add to Login Items)
+- Open `http://localhost:8000` anytime to see the latest analysis
+- Run `python -m pytest tests/ -v` after any code changes to verify nothing broke
 
 ```
                         ┌─────────────────────────────────┐
