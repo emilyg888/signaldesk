@@ -495,6 +495,42 @@
     background: var(--green);
     transition: width 0.8s ease;
   }
+  .sent-fill-blue { background: var(--blue); }
+
+  /* ── X posts feed ── */
+  .x-post-item {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .x-post-item:last-child { border-bottom: none; }
+  .x-post-text {
+    font-size: 12px;
+    color: var(--text);
+    line-height: 1.5;
+    margin-bottom: 4px;
+  }
+  .x-post-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 10px;
+    color: var(--hint);
+  }
+  .x-post-score { color: var(--muted); }
+  .x-post-link {
+    color: var(--blue);
+    text-decoration: none;
+    font-size: 12px;
+    opacity: 0.7;
+    transition: opacity 0.15s;
+  }
+  .x-post-link:hover { opacity: 1; }
+  .x-post-empty {
+    font-size: 11px;
+    color: var(--hint);
+    padding: 8px 0;
+    font-style: italic;
+  }
 
   /* ── Key levels ── */
   .levels-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -727,7 +763,10 @@
         <div class="panel">
           <div class="panel-header">
             <div class="panel-title">Sentiment</div>
-            <div class="panel-badge">NewsAPI · LM Studio</div>
+            <div style="display:flex;gap:6px;align-items:center">
+              <div class="panel-badge">NewsAPI · LM Studio</div>
+              <div class="panel-badge" id="xPostsBadge" style="display:none;color:var(--blue);border-color:var(--blue)"></div>
+            </div>
           </div>
           <div id="sentRows"></div>
           <div class="insight-box" id="aiInsight">—</div>
@@ -1017,14 +1056,65 @@ function renderDetail(d) {
 
   // Sentiment
   const newsScore = sent.sources?.news?.score ?? 50;
+  const xSrc = sent.sources?.x ?? null;
+  const hasX = xSrc !== null;
+  const xScore = hasX ? (xSrc.score ?? 50) : null;
   const themes = sent.key_themes || [];
-  document.getElementById('sentRows').innerHTML = `
+  const social = d.social || [];
+
+  // X posts badge
+  const xBadge = document.getElementById('xPostsBadge');
+  if (hasX) {
+    xBadge.textContent = `${social.length} posts`;
+    xBadge.style.display = '';
+  } else {
+    xBadge.style.display = 'none';
+  }
+
+  // Sentiment bars
+  let sentHtml = `
     <div class="sent-row">
-      <div class="sent-labels"><span>NewsAPI sentiment</span><span>${newsScore}%</span></div>
+      <div class="sent-labels"><span>NewsAPI</span><span>${newsScore}</span></div>
       <div class="sent-track"><div class="sent-fill" style="width:${newsScore}%"></div></div>
-    </div>
-    ${themes.length ? `<div style="margin-top:10px;font-size:11px;color:var(--muted)">
-      Themes: <span style="color:var(--text)">${themes.join(' · ')}</span></div>` : ''}`;
+    </div>`;
+  if (hasX) {
+    sentHtml += `
+    <div class="sent-row">
+      <div class="sent-labels"><span>X (Twitter)</span><span>${xScore}</span></div>
+      <div class="sent-track"><div class="sent-fill sent-fill-blue" style="width:${xScore}%"></div></div>
+    </div>`;
+  }
+  if (themes.length) {
+    sentHtml += `<div style="margin-top:10px;font-size:11px;color:var(--muted)">
+      Themes: <span style="color:var(--text)">${themes.join(' · ')}</span></div>`;
+  }
+
+  // X posts feed
+  if (hasX) {
+    let postsHtml;
+    if (social.length > 0) {
+      postsHtml = social.slice(0, 3).map(p => {
+        const raw = p.title || '';
+        const text = raw.length > 120 ? raw.slice(0, 120) + '…' : raw;
+        return `<div class="x-post-item">
+          <div class="x-post-text">${text}</div>
+          <div class="x-post-meta">
+            <span class="x-post-score">⚡ ${p.score ?? 0}</span>
+            <a href="${p.url || '#'}" target="_blank" rel="noopener" class="x-post-link" title="Open post">↗</a>
+          </div>
+        </div>`;
+      }).join('');
+    } else {
+      postsHtml = `<div class="x-post-empty">No X posts</div>`;
+    }
+    sentHtml += `
+    <div style="margin-top:14px">
+      <div class="panel-title" style="margin-bottom:8px">X (Twitter)</div>
+      ${postsHtml}
+    </div>`;
+  }
+
+  document.getElementById('sentRows').innerHTML = sentHtml;
 
   // AI insight
   document.getElementById('aiInsight').innerHTML =
