@@ -1,53 +1,93 @@
 """
-WhatsApp notifications via Twilio sandbox.
-Sends a daily summary after the pipeline completes.
+Discord webhook notifications.
+Sends a daily embed summary after the pipeline completes.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
-try:
-    from twilio.rest import Client as TwilioClient
-except ImportError:
-    TwilioClient = None  # type: ignore[assignment,misc]
+import requests
 
 log = logging.getLogger(__name__)
 
 
-def send_whatsapp_summary(results: list) -> None:
+def send_discord_summary(results: list) -> None:
     """
-    Send a WhatsApp summary of pipeline results via Twilio.
-    Skips gracefully if credentials are not configured or send fails.
+    Send a Discord embed summary of pipeline results via webhook.
+    Skips gracefully if webhook URL not configured or POST fails.
     """
     from pipeline.config import API_KEYS
 
-    sid   = API_KEYS.get("twilio_account_sid", "")
-    token = API_KEYS.get("twilio_auth_token", "")
-    from_ = API_KEYS.get("twilio_from", "whatsapp:+14155238886")
-    to    = API_KEYS.get("whatsapp_to", "") or API_KEYS.get("twilio_to", "")
-
-    if (
-        not sid   or sid.startswith("YOUR_")
-        or not token or token.startswith("YOUR_")
-        or not to  or "YOUR_" in to
-    ):
-        log.warning("Twilio credentials not configured — skipping WhatsApp notification")
+    webhook_url = API_KEYS.get("discord_webhook", "")
+    if not webhook_url or webhook_url.startswith("YOUR_"):
+        log.warning("Discord webhook URL not configured — skipping Discord notification")
         return
 
     if not results:
-        log.warning("No pipeline results to summarise — skipping WhatsApp notification")
+        log.warning("No pipeline results to summarise — skipping Discord notification")
         return
 
-    msg = _format_message(results)
+    payload = _build_discord_payload(results)
 
     try:
-        if TwilioClient is None:
-            raise ImportError("twilio package not installed")
-        client = TwilioClient(sid, token)
-        client.messages.create(body=msg, from_=from_, to=to)
-        log.info(f"WhatsApp summary sent to {to}")
+        resp = requests.post(webhook_url, json=payload, timeout=10)
+        resp.raise_for_status()
+        log.info("Discord summary sent")
     except Exception as e:
-        log.warning(f"WhatsApp notification failed — {e}")
+        log.warning(f"Discord notification failed — {e}")
+
+
+def _build_discord_payload(results: list) -> dict:
+    sorted_results = sorted(
+        results, key=lambda r: r.get("aggregate_score", 0), reverse=True
+    )
+
+    now = datetime.now()
+    title = f"\U0001f4ca SignalDesk — {now.strftime('%A')} {now.strftime('%d %b %Y')}"
+
+    # Determine embed colour based on majority bias
+    bullish = sum(1 for r in sorted_results if r.get("aggregate_score", 50) >= 60)
+    bearish = sum(1 for r in sorted_results if r.get("aggregate_score", 50) <= 40)
+    if bullish > bearish:
+        color = 0x00D17A  # green
+    elif bearish > bullish:
+        color = 0xFF4D6D  # red
+    else:
+        color = 0x7A8494  # grey
+
+    fields = []
+    for r in sorted_results:
+        ticker = r.get("ticker", "?")
+        score = r.get("aggregate_score", 0)
+        bias = r.get("analysis", {}).get("bias", "Neutral")
+        emoji = _bias_emoji(score)
+        action = r.get("analysis", {}).get("suggested_action", "")
+        if len(action) > 80:
+            action = action[:77] + "..."
+        value = f"{emoji} {score}/100 — {bias}"
+        if action:
+            value += f"\n{action}"
+        fields.append({"name": ticker, "value": value, "inline": True})
+
+    macro = results[0].get("macro", {})
+    vix = macro.get("vix")
+    us10y = macro.get("us10y")
+    macro_score = macro.get("composite_score")
+
+    footer_parts = []
+    footer_parts.append(f"VIX {vix} ({_vix_label(vix)})" if vix is not None else "VIX —")
+    footer_parts.append(f"10Y {us10y}%" if us10y is not None else "10Y —")
+    footer_parts.append(f"Macro {macro_score}/100" if macro_score is not None else "Macro —")
+
+    return {
+        "embeds": [{
+            "title": title,
+            "color": color,
+            "fields": fields,
+            "footer": {"text": " · ".join(footer_parts)},
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }]
+    }
 
 
 def _format_message(results: list) -> str:

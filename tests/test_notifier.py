@@ -1,5 +1,5 @@
 """
-Unit tests for pipeline/notifier.py
+Unit tests for pipeline/notifier.py (Discord webhook)
 """
 
 import logging
@@ -12,7 +12,13 @@ import pytest
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
-from pipeline.notifier import _bias_emoji, _format_message, _vix_label, send_whatsapp_summary
+from pipeline.notifier import (
+    _bias_emoji,
+    _build_discord_payload,
+    _format_message,
+    _vix_label,
+    send_discord_summary,
+)
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -40,8 +46,20 @@ MULTI_RESULTS = [
     make_result("TSLA",    55, bias="Neutral",  suggested_action="Hold"),
 ]
 
+DISCORD_RESULTS = [
+    make_result("AAPL",     72, bias="Bullish",  suggested_action="Buy dips near 195 support"),
+    make_result("NVDA",     65, bias="Bullish",  suggested_action="Accumulate on weakness"),
+    make_result("TSLA",     55, bias="Neutral",  suggested_action="Hold — wait for breakout"),
+    make_result("BTC-USD",  38, bias="Bearish",  suggested_action="Avoid — below key moving averages"),
+    make_result("EURUSD=X", 42, bias="Neutral",  suggested_action="Sideways range"),
+]
 
-# ── _bias_emoji ───────────────────────────────────────────────────────────────
+VALID_KEYS = {
+    "discord_webhook": "https://discord.com/api/webhooks/test/fake",
+}
+
+
+# ── _bias_emoji ──────────────────────────────────────────────────────────────
 
 class TestBiasEmoji:
     def test_bullish_score_returns_green(self):
@@ -72,7 +90,7 @@ class TestBiasEmoji:
         assert _bias_emoji(59) == "⚪"
 
 
-# ── _vix_label ────────────────────────────────────────────────────────────────
+# ── _vix_label ───────────────────────────────────────────────────────────────
 
 class TestVixLabel:
     def test_low_vix_returns_low_fear(self):
@@ -91,7 +109,7 @@ class TestVixLabel:
         assert _vix_label(None) == "—"
 
 
-# ── _format_message ───────────────────────────────────────────────────────────
+# ── _format_message ──────────────────────────────────────────��───────────────
 
 class TestFormatMessage:
     def test_header_contains_signaldesk(self):
@@ -137,17 +155,14 @@ class TestFormatMessage:
 
     def test_bull_emoji_for_high_score(self):
         msg = _format_message(MULTI_RESULTS)
-        # AAPL has score 72 — should show green circle
         assert "🟢" in msg
 
     def test_bear_emoji_for_low_score(self):
         msg = _format_message(MULTI_RESULTS)
-        # BTC-USD has score 38 — should show red circle
         assert "🔴" in msg
 
     def test_neutral_emoji_for_mid_score(self):
         msg = _format_message(MULTI_RESULTS)
-        # TSLA has score 55 — should show white circle
         assert "⚪" in msg
 
     def test_single_ticker_no_crash(self):
@@ -174,69 +189,156 @@ class TestFormatMessage:
         assert "Top signal: AAPL" in msg
 
 
-# ── send_whatsapp_summary ─────────────────────────────────────────────────────
+# ── _build_discord_payload ───────────────────────────────────────────────────
 
-VALID_KEYS = {
-    "twilio_account_sid": "ACtest123",
-    "twilio_auth_token":  "authtokentest",
-    "twilio_from":        "whatsapp:+14155238886",
-    "whatsapp_to":        "whatsapp:+61400000000",
-}
+class TestBuildDiscordPayload:
+    def test_embed_has_all_tickers(self):
+        payload = _build_discord_payload(DISCORD_RESULTS)
+        names = [f["name"] for f in payload["embeds"][0]["fields"]]
+        assert set(names) == {"AAPL", "NVDA", "TSLA", "BTC-USD", "EURUSD=X"}
+
+    def test_tickers_sorted_by_score_descending(self):
+        payload = _build_discord_payload(DISCORD_RESULTS)
+        fields = payload["embeds"][0]["fields"]
+        scores = []
+        for f in fields:
+            score_str = f["value"].split("/100")[0].split()[-1]
+            scores.append(int(score_str))
+        assert scores == sorted(scores, reverse=True)
+
+    def test_color_green_when_majority_bullish(self):
+        bullish_results = [
+            make_result("AAPL", 72), make_result("NVDA", 65),
+            make_result("X", 80), make_result("BTC-USD", 38),
+        ]
+        payload = _build_discord_payload(bullish_results)
+        assert payload["embeds"][0]["color"] == 0x00D17A
+
+    def test_color_red_when_majority_bearish(self):
+        bearish_results = [
+            make_result("AAPL", 30), make_result("NVDA", 25),
+            make_result("TSLA", 35), make_result("X", 70),
+        ]
+        payload = _build_discord_payload(bearish_results)
+        assert payload["embeds"][0]["color"] == 0xFF4D6D
+
+    def test_color_grey_when_mixed(self):
+        mixed_results = [
+            make_result("AAPL", 70), make_result("BTC-USD", 30),
+        ]
+        payload = _build_discord_payload(mixed_results)
+        assert payload["embeds"][0]["color"] == 0x7A8494
+
+    def test_footer_contains_vix_and_10y(self):
+        payload = _build_discord_payload(DISCORD_RESULTS)
+        footer = payload["embeds"][0]["footer"]["text"]
+        assert "VIX 18.5" in footer
+        assert "10Y 4.2%" in footer
+
+    def test_footer_contains_vix_label(self):
+        payload = _build_discord_payload(DISCORD_RESULTS)
+        footer = payload["embeds"][0]["footer"]["text"]
+        assert "Low Fear" in footer
+
+    def test_footer_contains_macro_score(self):
+        payload = _build_discord_payload(DISCORD_RESULTS)
+        footer = payload["embeds"][0]["footer"]["text"]
+        assert "Macro 62/100" in footer
+
+    def test_timestamp_present(self):
+        payload = _build_discord_payload(DISCORD_RESULTS)
+        assert "timestamp" in payload["embeds"][0]
+
+    def test_title_contains_signaldesk(self):
+        payload = _build_discord_payload(DISCORD_RESULTS)
+        assert "SignalDesk" in payload["embeds"][0]["title"]
+
+    def test_fields_are_inline(self):
+        payload = _build_discord_payload(DISCORD_RESULTS)
+        for field in payload["embeds"][0]["fields"]:
+            assert field["inline"] is True
+
+    def test_suggested_action_truncated_to_80_chars(self):
+        long_action = "A" * 120
+        results = [make_result("AAPL", 70, suggested_action=long_action)]
+        payload = _build_discord_payload(results)
+        value = payload["embeds"][0]["fields"][0]["value"]
+        action_line = value.split("\n")[1]
+        assert len(action_line) <= 80
+
+    def test_missing_suggested_action_still_formats(self):
+        r = make_result("AAPL", 70)
+        r["analysis"].pop("suggested_action")
+        payload = _build_discord_payload([r])
+        value = payload["embeds"][0]["fields"][0]["value"]
+        assert "70/100" in value
+
+    def test_missing_vix_shows_dash_in_footer(self):
+        r = make_result("AAPL", 70, vix=None)
+        payload = _build_discord_payload([r])
+        footer = payload["embeds"][0]["footer"]["text"]
+        assert "VIX —" in footer
+
+    def test_missing_us10y_shows_dash_in_footer(self):
+        r = make_result("AAPL", 70, us10y=None)
+        payload = _build_discord_payload([r])
+        footer = payload["embeds"][0]["footer"]["text"]
+        assert "10Y —" in footer
+
+    def test_single_ticker_no_crash(self):
+        payload = _build_discord_payload([make_result("NVDA", 70)])
+        assert len(payload["embeds"][0]["fields"]) == 1
+        assert payload["embeds"][0]["fields"][0]["name"] == "NVDA"
 
 
-class TestSendWhatsappSummary:
-    def test_skips_when_sid_not_configured(self, caplog):
-        keys = {**VALID_KEYS, "twilio_account_sid": "YOUR_TWILIO_ACCOUNT_SID"}
+# ── send_discord_summary ─────────────────────────────────────────────────────
+
+class TestSendDiscordSummary:
+    def test_skips_when_webhook_not_configured(self, caplog):
+        keys = {"discord_webhook": "YOUR_DISCORD_WEBHOOK_URL"}
         with patch("pipeline.config.API_KEYS", keys):
             with caplog.at_level(logging.WARNING, logger="pipeline.notifier"):
-                send_whatsapp_summary(MULTI_RESULTS)
+                send_discord_summary(MULTI_RESULTS)
         assert any("not configured" in r.message for r in caplog.records)
 
-    def test_skips_when_token_not_configured(self, caplog):
-        keys = {**VALID_KEYS, "twilio_auth_token": "YOUR_TWILIO_AUTH_TOKEN"}
+    def test_skips_when_webhook_empty(self, caplog):
+        keys = {"discord_webhook": ""}
         with patch("pipeline.config.API_KEYS", keys):
             with caplog.at_level(logging.WARNING, logger="pipeline.notifier"):
-                send_whatsapp_summary(MULTI_RESULTS)
+                send_discord_summary(MULTI_RESULTS)
         assert any("not configured" in r.message for r in caplog.records)
 
-    def test_skips_when_to_not_configured(self, caplog):
-        keys = {**VALID_KEYS, "whatsapp_to": "whatsapp:+YOUR_MOBILE_NUMBER"}
-        with patch("pipeline.config.API_KEYS", keys):
+    def test_skips_when_webhook_missing(self, caplog):
+        with patch("pipeline.config.API_KEYS", {}):
             with caplog.at_level(logging.WARNING, logger="pipeline.notifier"):
-                send_whatsapp_summary(MULTI_RESULTS)
+                send_discord_summary(MULTI_RESULTS)
         assert any("not configured" in r.message for r in caplog.records)
 
     def test_skips_when_results_empty(self, caplog):
         with patch("pipeline.config.API_KEYS", VALID_KEYS):
             with caplog.at_level(logging.WARNING, logger="pipeline.notifier"):
-                send_whatsapp_summary([])
+                send_discord_summary([])
         assert any("No pipeline results" in r.message for r in caplog.records)
 
-    def test_sends_when_credentials_valid(self):
-        mock_client = MagicMock()
-        mock_cls    = MagicMock(return_value=mock_client)
+    def test_sends_when_configured(self):
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status = MagicMock()
         with patch("pipeline.config.API_KEYS", VALID_KEYS), \
-             patch("pipeline.notifier.TwilioClient", mock_cls):
-            send_whatsapp_summary(MULTI_RESULTS)
-        mock_cls.assert_called_once_with(
-            VALID_KEYS["twilio_account_sid"], VALID_KEYS["twilio_auth_token"]
-        )
-        mock_client.messages.create.assert_called_once()
+             patch("pipeline.notifier.requests.post", return_value=mock_resp) as mock_post:
+            send_discord_summary(MULTI_RESULTS)
+        mock_post.assert_called_once()
+        call_args = mock_post.call_args
+        assert call_args[0][0] == VALID_KEYS["discord_webhook"]
+        assert "embeds" in call_args[1]["json"]
 
-    def test_skips_gracefully_when_twilio_raises(self, caplog):
-        mock_client = MagicMock()
-        mock_client.messages.create.side_effect = Exception("Network error")
-        mock_cls = MagicMock(return_value=mock_client)
+    def test_skips_gracefully_when_post_raises(self, caplog):
         with patch("pipeline.config.API_KEYS", VALID_KEYS), \
-             patch("pipeline.notifier.TwilioClient", mock_cls):
+             patch("pipeline.notifier.requests.post", side_effect=Exception("Connection refused")):
             with caplog.at_level(logging.WARNING, logger="pipeline.notifier"):
-                send_whatsapp_summary(MULTI_RESULTS)
-        assert any("notification failed" in r.message for r in caplog.records)
+                send_discord_summary(MULTI_RESULTS)
+        assert any("Discord notification failed" in r.message for r in caplog.records)
 
-    def test_pipeline_does_not_crash_on_twilio_exception(self):
-        mock_client = MagicMock()
-        mock_client.messages.create.side_effect = RuntimeError("Twilio down")
-        mock_cls = MagicMock(return_value=mock_client)
+    def test_pipeline_does_not_crash_on_discord_exception(self):
         with patch("pipeline.config.API_KEYS", VALID_KEYS), \
-             patch("pipeline.notifier.TwilioClient", mock_cls):
-            send_whatsapp_summary(MULTI_RESULTS)  # must not raise
+             patch("pipeline.notifier.requests.post", side_effect=RuntimeError("timeout")):
+            send_discord_summary(MULTI_RESULTS)  # must not raise

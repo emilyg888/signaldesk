@@ -28,7 +28,7 @@ from pipeline.news_fetcher import fetch_news
 from pipeline.social_fetcher import fetch_social
 from pipeline.ai_analyst import generate_analysis
 from pipeline.storage import save_run, init_db
-from pipeline.notifier import send_whatsapp_summary
+from pipeline.notifier import send_discord_summary
 
 logging.basicConfig(
     level=logging.INFO,
@@ -62,7 +62,7 @@ def run():
             log.error(f"✗ {ticker} failed: {e}", exc_info=True)
 
     log.info(f"\nPipeline complete. {len(results)}/{len(watchlist)} tickers processed.")
-    send_whatsapp_summary(results)
+    send_discord_summary(results)
     return results
 
 
