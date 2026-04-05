@@ -42,6 +42,13 @@ API_KEYS = {
     # X (Twitter) API — pay-per-use
     # Get from: developer.x.com → your app → Keys and Tokens → Bearer Token
     "x_bearer_token": "TODO_X_BEARER_TOKEN",
+
+    # Twilio — WhatsApp alerts via sandbox
+    # Sign up at https://www.twilio.com, then Messaging → Try it out → Send a WhatsApp message
+    "twilio_account_sid": "YOUR_TWILIO_ACCOUNT_SID",
+    "twilio_auth_token":  "YOUR_TWILIO_AUTH_TOKEN",
+    "twilio_from":        "whatsapp:+14155238886",   # Twilio sandbox number (fixed)
+    "twilio_to":          "whatsapp:+YOUR_MOBILE_NUMBER",
 }
 
 PATHS = {
