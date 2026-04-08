@@ -1,22 +1,23 @@
 # SignalDesk — Architecture
 
 ## Overview
+
 ## What Was Built
 
-| What | How |
-|------|-----|
-| Daily scheduler | launchd fires at 7:30 AM |
-| Price + OHLCV | yfinance (free) |
-| Macro indicators | FRED API (free) |
-| News headlines | NewsAPI (free) |
-| Technical analysis | pandas-ta — RSI, MACD, EMA, BB, ATR, Stochastic |
-| Sentiment scoring | Qwen2.5 14B via LM Studio (local, free) |
-| AI narrative + forecast | Qwen2.5 14B via LM Studio (local, free) |
-| Storage | SQLite with duplicate-safe daily upsert |
-| Backend | FastAPI on localhost:8000 |
-| Dashboard | Dark terminal UI — overview, detail, macro, watchlist |
-| Tests | 98/98 unit + integration tests passing |
-| Git | Committed to GitHub, API keys excluded |
+| What                    | How                                                   |
+| ----------------------- | ----------------------------------------------------- |
+| Daily scheduler         | launchd fires at 7:30 AM                              |
+| Price + OHLCV           | yfinance (free)                                       |
+| Macro indicators        | FRED API (free)                                       |
+| News headlines          | NewsAPI (free)                                        |
+| Technical analysis      | pandas-ta — RSI, MACD, EMA, BB, ATR, Stochastic       |
+| Sentiment scoring       | Qwen2.5 14B via LM Studio (local, free)               |
+| AI narrative + forecast | Qwen2.5 14B via LM Studio (local, free)               |
+| Storage                 | SQLite with duplicate-safe daily upsert               |
+| Backend                 | FastAPI on localhost:8000                             |
+| Dashboard               | Dark terminal UI — overview, detail, macro, watchlist |
+| Tests                   | 98/98 unit + integration tests passing                |
+| Git                     | Committed to GitHub, API keys excluded                |
 
 ## Daily Routine
 
@@ -135,32 +136,32 @@ FRED + yfinance   ──►  macro score   ──►  macro score (0–100)
 
 ## File responsibilities
 
-| File | Responsibility |
-|------|---------------|
-| `pipeline/run_pipeline.py` | Orchestrates the full pipeline for each ticker |
-| `pipeline/config.py` | All settings, API keys, model config (gitignored) |
-| `pipeline/config.example.py` | Safe template for version control |
-| `pipeline/data_fetcher.py` | yfinance price/OHLCV + FRED/yfinance macro data |
-| `pipeline/technical.py` | RSI, MACD, EMA cross, Bollinger Bands, ATR, volume |
-| `pipeline/news_fetcher.py` | NewsAPI headlines with yfinance fallback |
-| `pipeline/social_fetcher.py` | Stub — extensible for future social sources |
-| `pipeline/sentiment.py` | LM Studio sentiment scoring from news headlines |
-| `pipeline/ai_analyst.py` | LM Studio narrative generation + 5-day forecast |
-| `pipeline/storage.py` | SQLite schema, read/write, history queries |
-| `api/server.py` | FastAPI REST endpoints for dashboard |
-| `dashboard/index.html` | Browser frontend |
-| `scheduler/com.signaldesk.pipeline.plist` | macOS launchd config (7:30 AM) |
+| File                                      | Responsibility                                     |
+| ----------------------------------------- | -------------------------------------------------- |
+| `pipeline/run_pipeline.py`                | Orchestrates the full pipeline for each ticker     |
+| `pipeline/config.py`                      | All settings, API keys, model config (gitignored)  |
+| `pipeline/config.example.py`              | Safe template for version control                  |
+| `pipeline/data_fetcher.py`                | yfinance price/OHLCV + FRED/yfinance macro data    |
+| `pipeline/technical.py`                   | RSI, MACD, EMA cross, Bollinger Bands, ATR, volume |
+| `pipeline/news_fetcher.py`                | NewsAPI headlines with yfinance fallback           |
+| `pipeline/social_fetcher.py`              | Stub — extensible for future social sources        |
+| `pipeline/sentiment.py`                   | LM Studio sentiment scoring from news headlines    |
+| `pipeline/ai_analyst.py`                  | LM Studio narrative generation + 5-day forecast    |
+| `pipeline/storage.py`                     | SQLite schema, read/write, history queries         |
+| `api/server.py`                           | FastAPI REST endpoints for dashboard               |
+| `dashboard/index.html`                    | Browser frontend                                   |
+| `scheduler/com.signaldesk.pipeline.plist` | macOS launchd config (7:30 AM)                     |
 
 ---
 
 ## External services
 
-| Service | URL | Auth | Purpose |
-|---------|-----|------|---------|
-| yfinance | Yahoo Finance | None | Price, OHLCV, basic news |
-| FRED | api.stlouisfed.org | API key (free) | Fed rate, CPI, GDP |
-| NewsAPI | newsapi.org | API key (free) | News headlines |
-| LM Studio | localhost:1234 | None (local) | AI analysis + sentiment |
+| Service   | URL                | Auth           | Purpose                  |
+| --------- | ------------------ | -------------- | ------------------------ |
+| yfinance  | Yahoo Finance      | None           | Price, OHLCV, basic news |
+| FRED      | api.stlouisfed.org | API key (free) | Fed rate, CPI, GDP       |
+| NewsAPI   | newsapi.org        | API key (free) | News headlines           |
+| LM Studio | localhost:1234     | None (local)   | AI analysis + sentiment  |
 
 Twitter/X, Reddit, StockTwits — evaluated and dropped (paid or network-blocked).
 
@@ -168,15 +169,15 @@ Twitter/X, Reddit, StockTwits — evaluated and dropped (paid or network-blocked
 
 ## Machine specs (Emily's setup)
 
-| Component | Spec |
-|-----------|------|
-| Mac | MacBook Pro M5 |
-| RAM | 32 GB unified memory |
-| Python | 3.12.12 (via miniconda `dev` env) |
-| venv | `.venv` at project root |
-| Model | Qwen2.5-14B-Instruct Q6_K (~12.1GB) |
-| Model host | LM Studio (localhost:1234) |
-| DB | SQLite at `data/db/signaldesk.db` |
+| Component    | Spec                                    |
+| ------------ | --------------------------------------- |
+| Mac          | MacBook Pro M5                          |
+| RAM          | 32 GB unified memory                    |
+| Python       | 3.12.12 (via miniconda `dev` env)       |
+| venv         | `.venv` at project root                 |
+| Model        | Qwen2.5-14B-Instruct Q6_K (~12.1GB)     |
+| Model host   | LM Studio (localhost:1234)              |
+| DB           | SQLite at `data/db/signaldesk.db`       |
 | Project root | `~/LocalDocuments/Projects/signaldesk/` |
 
 ---
@@ -192,6 +193,29 @@ aggregate_score = round(
 ```
 
 Score interpretation:
+
 - 0–40: Bearish
 - 41–59: Neutral
 - 60–100: Bullish
+
+How to check the logs
+
+# That shows the last 50 lines — enough to see a full run for all tickers.
+
+tail -50 logs/pipeline.log
+
+tail -f logs/pipeline.log
+
+# Press Ctrl+C to stop following.
+
+# To see just the summary lines
+
+grep -E "✓|✗|Pipeline complete|starting" logs/pipeline.log | tail -20
+
+# To see the last run only
+
+grep -n "pipeline starting" logs/pipeline.log | tail -1
+
+# That gives you the line number of the last start, then:
+
+sed -n '1234,$p' logs/pipeline.log # replace 1234 with the line number

@@ -39,3 +39,5 @@ logs/
 
 # ── Test cache ───────────────────────────────────────────────────────────────
 .pytest_cache/
+pipeline/config.example.py
+

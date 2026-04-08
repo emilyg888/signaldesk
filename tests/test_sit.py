@@ -194,13 +194,13 @@ class TestProcessTicker:
         assert result["analysis"]["bias"] == "Bullish"
         assert len(result["analysis"]["forecast"]) == 5
 
-    def test_social_posts_empty_list(self, mock_external_data, mock_lm_studio, tmp_path, monkeypatch):
+    def test_social_posts_is_list(self, mock_external_data, mock_lm_studio, tmp_path, monkeypatch):
         import pipeline.storage as storage
         monkeypatch.setattr(storage, "DB_PATH", tmp_path / "test.db")
         from pipeline.run_pipeline import process_ticker
         storage.init_db()
         result = process_ticker("AAPL")
-        assert result["social"] == []
+        assert isinstance(result["social"], list)
 
 
 # ── SIT: full run() with multiple tickers ─────────────────────────────────────

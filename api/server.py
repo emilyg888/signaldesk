@@ -4,6 +4,7 @@ Run with: uvicorn api.server:app --reload --port 8000
 """
 
 import json
+import math
 import subprocess
 import sys
 from pathlib import Path
@@ -43,6 +44,17 @@ def startup():
     init_db()
 
 
+def clean_nan(obj):
+    """Recursively replace NaN/Inf floats with None so Starlette can serialize."""
+    if isinstance(obj, float):
+        return None if not math.isfinite(obj) else obj
+    if isinstance(obj, dict):
+        return {k: clean_nan(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [clean_nan(v) for v in obj]
+    return obj
+
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @app.get("/")
@@ -71,9 +83,12 @@ def update_watchlist(body: WatchlistUpdate):
 @app.get("/api/dashboard")
 def dashboard_summary():
     """All latest runs — for the overview page."""
+    watchlist = set(load_watchlist())
     results = get_all_latest()
     summary = []
     for r in results:
+        if watchlist and r["ticker"] not in watchlist:
+            continue
         pd = r.get("price_data", {})
         analysis = r.get("analysis", {})
         summary.append({
@@ -86,7 +101,7 @@ def dashboard_summary():
             "conviction":  analysis.get("conviction"),
             "narrative":   analysis.get("narrative", ""),
         })
-    return {"data": summary, "generated_at": datetime.now().isoformat()}
+    return clean_nan({"data": summary, "generated_at": datetime.now().isoformat()})
 
 
 @app.get("/api/ticker/{ticker}")
@@ -95,13 +110,13 @@ def ticker_detail(ticker: str):
     result = get_latest_run(ticker.upper())
     if not result:
         raise HTTPException(404, f"No data found for {ticker}. Run the pipeline first.")
-    return result
+    return clean_nan(result)
 
 
 @app.get("/api/ticker/{ticker}/history")
 def ticker_history(ticker: str, days: int = 30):
     history = get_history(ticker.upper(), days)
-    return {"ticker": ticker.upper(), "history": history}
+    return clean_nan({"ticker": ticker.upper(), "history": history})
 
 
 @app.post("/api/run")

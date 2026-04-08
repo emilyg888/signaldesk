@@ -13,14 +13,6 @@
     <string>/Users/emilygao/LocalDocuments/Projects/signaldesk/pipeline/run_pipeline.py</string>
   </array>
 
-  <key>StartCalendarInterval</key>
-  <dict>
-    <key>Hour</key>
-    <integer>7</integer>
-    <key>Minute</key>
-    <integer>30</integer>
-  </dict>
-
   <key>EnvironmentVariables</key>
   <dict>
     <key>PYTHONPATH</key>
@@ -39,7 +31,7 @@
   <string>/Users/emilygao/LocalDocuments/Projects/signaldesk/logs/launchd_stderr.log</string>
 
   <key>RunAtLoad</key>
-  <false/>
+  <true/>
 
 </dict>
 </plist>

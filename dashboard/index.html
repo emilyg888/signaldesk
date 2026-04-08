@@ -965,12 +965,26 @@ async function selectTicker(ticker) {
 
   try {
     const r = await fetch(`${API}/api/ticker/${encodeURIComponent(ticker)}`);
-    if (!r.ok) throw new Error('Not found');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const d = await r.json();
     state.data[ticker] = d;
-    renderDetail(d);
+    try {
+      renderDetail(d);
+    } catch (renderErr) {
+      console.error(`renderDetail(${ticker}) threw:`, renderErr, d);
+      document.getElementById('metricStrip').innerHTML =
+        `<div class="metric-card" style="grid-column:1/-1;color:var(--red)">
+           Render error for <strong>${ticker}</strong>: ${renderErr.message}.
+           See browser console for stack + payload.
+         </div>`;
+    }
   } catch(e) {
-    toast(`No data for ${ticker} — run the pipeline first`);
+    console.error(`selectTicker(${ticker}) fetch failed:`, e);
+    toast(`No data for ${ticker}: ${e.message}`);
+    document.getElementById('metricStrip').innerHTML =
+      `<div class="metric-card" style="grid-column:1/-1;color:var(--red)">
+         Failed to load <strong>${ticker}</strong>: ${e.message}.
+       </div>`;
   }
 }
 
