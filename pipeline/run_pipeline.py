@@ -1,6 +1,6 @@
 """
 SignalDesk — Daily Morning Pipeline
-Runs at 7:30 AM via launchd
+Runs at login via launchd
 Collects data → scores sentiment → generates AI analysis → stores to SQLite
 
 Data sources:

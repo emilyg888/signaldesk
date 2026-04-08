@@ -1,7 +1,7 @@
 # SignalDesk
 
 Daily morning pipeline for short-term (1–5 day) market analysis.
-Runs at 7:30 AM via macOS launchd. Results served via a local FastAPI dashboard.
+Runs at login via macOS launchd. Results served via a local FastAPI dashboard.
 
 ---
 
@@ -107,7 +107,7 @@ Open http://localhost:8000
 
 ---
 
-## Schedule with launchd (7:30 AM daily)
+## Schedule with launchd (runs at login)
 
 ```bash
 # Edit paths in the plist first
@@ -127,7 +127,7 @@ launchctl start com.signaldesk.pipeline
 tail -f logs/pipeline.log
 ```
 
-> LM Studio must be running at 7:30 AM. Add it to Login Items and enable
+> LM Studio must be running at login. Add it to Login Items and enable
 > auto-start server so it's ready when launchd fires.
 
 ---

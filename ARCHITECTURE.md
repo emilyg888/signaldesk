@@ -6,7 +6,7 @@
 
 | What                    | How                                                   |
 | ----------------------- | ----------------------------------------------------- |
-| Daily scheduler         | launchd fires at 7:30 AM                              |
+| Daily scheduler         | launchd fires at login                                |
 | Price + OHLCV           | yfinance (free)                                       |
 | Macro indicators        | FRED API (free)                                       |
 | News headlines          | NewsAPI (free)                                        |
@@ -21,14 +21,14 @@
 
 ## Daily Routine
 
-- Mac wakes at 7:30 AM → launchd fires the pipeline automatically
+- Mac logs in → launchd fires the pipeline automatically
 - LM Studio must be running with server started (add to Login Items)
 - Open `http://localhost:8000` anytime to see the latest analysis
 - Run `python -m pytest tests/ -v` after any code changes to verify nothing broke
 
 ```
                         ┌─────────────────────────────────┐
-                        │   macOS launchd  (7:30 AM)      │
+                        │   macOS launchd  (at login)     │
                         │   com.signaldesk.pipeline.plist  │
                         └────────────┬────────────────────┘
                                      │ triggers
@@ -150,7 +150,7 @@ FRED + yfinance   ──►  macro score   ──►  macro score (0–100)
 | `pipeline/storage.py`                     | SQLite schema, read/write, history queries         |
 | `api/server.py`                           | FastAPI REST endpoints for dashboard               |
 | `dashboard/index.html`                    | Browser frontend                                   |
-| `scheduler/com.signaldesk.pipeline.plist` | macOS launchd config (7:30 AM)                     |
+| `scheduler/com.signaldesk.pipeline.plist` | macOS launchd config (runs at login)               |
 
 ---
 
