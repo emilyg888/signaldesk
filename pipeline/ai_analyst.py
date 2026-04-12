@@ -1,19 +1,19 @@
 """
-AI Analyst — generates narrative insight + 5-day forecast via LM Studio.
-Uses Qwen2.5-14B-Instruct running locally.
+AI Analyst — generates narrative insight + 5-day forecast via Ollama.
+Uses qwen2.5:14b running locally.
 Sentiment source: NewsAPI only (Reddit/StockTwits dropped).
 """
 
 import logging
 import json
 from openai import OpenAI
-from pipeline.config import LM_STUDIO
+from pipeline.config import OLLAMA
 
 log = logging.getLogger(__name__)
 
 client = OpenAI(
-    base_url=LM_STUDIO["base_url"],
-    api_key=LM_STUDIO["api_key"],
+    base_url=OLLAMA["base_url"],
+    api_key=OLLAMA["api_key"],
 )
 
 SYSTEM_PROMPT = """You are an expert quantitative analyst and market strategist.
@@ -53,16 +53,16 @@ def generate_analysis(
 ) -> dict:
     prompt = _build_prompt(ticker, price_data, technicals, sentiment, macro)
 
-    log.debug(f"  Calling LM Studio analysis model for {ticker}")
+    log.debug(f"  Calling Ollama analysis model for {ticker}")
     try:
         resp = client.chat.completions.create(
-            model=LM_STUDIO["analysis_model"],
+            model=OLLAMA["analysis_model"],
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user",   "content": prompt},
             ],
-            temperature=LM_STUDIO["temperature"],
-            max_tokens=LM_STUDIO["max_tokens"],
+            temperature=OLLAMA["temperature"],
+            max_tokens=OLLAMA["max_tokens"],
         )
         raw = resp.choices[0].message.content.strip()
         raw = raw.replace("```json", "").replace("```", "").strip()
@@ -72,7 +72,7 @@ def generate_analysis(
         log.warning(f"  Analysis model returned non-JSON for {ticker}: {e}")
         return _fallback_analysis(ticker, technicals, sentiment)
     except Exception as e:
-        log.error(f"  LM Studio analysis call failed for {ticker}: {e}")
+        log.error(f"  Ollama analysis call failed for {ticker}: {e}")
         return _fallback_analysis(ticker, technicals, sentiment)
 
 
@@ -99,7 +99,7 @@ def _build_prompt(ticker, price_data, tech, sent, macro) -> str:
         f"Stoch K/D: {tech.get('stoch_k')}/{tech.get('stoch_d')}",
         f"Technical composite score: {tech.get('composite_score')}/100",
         "",
-        "=== SENTIMENT (NewsAPI — LM Studio scored) ===",
+        "=== SENTIMENT (NewsAPI — Ollama scored) ===",
         f"Composite sentiment score: {sent.get('composite_score')}/100 ({sent.get('label')})",
         news_sentiment_line,
         f"Key themes: {', '.join(sent.get('key_themes', []))}",
@@ -115,19 +115,19 @@ def _build_prompt(ticker, price_data, tech, sent, macro) -> str:
 
 
 def _fallback_analysis(ticker, tech, sent) -> dict:
-    """Minimal fallback if LM Studio call fails."""
+    """Minimal fallback if Ollama call fails."""
     score = (tech.get("composite_score", 50) + sent.get("composite_score", 50)) / 2
     bias  = "Bullish" if score >= 60 else "Bearish" if score <= 40 else "Neutral"
     return {
         "bias":       bias,
         "conviction": "Low",
         "narrative":  f"Fallback analysis — AI call failed. Tech: {tech.get('composite_score')}/100, Sentiment: {sent.get('composite_score')}/100.",
-        "key_risks":        ["LM Studio unavailable"],
+        "key_risks":        ["Ollama unavailable"],
         "key_catalysts":    [],
         "forecast": [
             {"day": f"D+{i}", "direction": "Flat", "magnitude": "0%", "confidence": 50}
             for i in range(1, 6)
         ],
         "key_levels":       {"support": [], "resistance": []},
-        "suggested_action": "Check LM Studio connection and retry.",
+        "suggested_action": "Check Ollama connection and retry.",
     }

@@ -7,7 +7,7 @@ Data sources:
   - yfinance        : price / OHLCV (free, no key)
   - FRED            : macro indicators (free API key)
   - NewsAPI         : news headlines for sentiment (free API key)
-  - LM Studio       : local AI for sentiment scoring + analysis (free, local)
+  - Ollama          : local AI for sentiment scoring + analysis (free, local)
   - SQLite          : local storage (free, no setup)
 """
 
@@ -87,12 +87,12 @@ def process_ticker(ticker: str) -> dict:
     log.info(f"  Loading macro data...")
     macro = fetch_macro_data()
 
-    # 6. Sentiment scoring via LM Studio (news-driven)
-    log.info(f"  Scoring sentiment (LM Studio)...")
+    # 6. Sentiment scoring via Ollama (news-driven)
+    log.info(f"  Scoring sentiment (Ollama)...")
     sentiment = score_sentiment(news_items, social_posts, ticker)
 
-    # 7. AI analysis + forecast via LM Studio (Qwen2.5 14B)
-    log.info(f"  Generating AI analysis (LM Studio)...")
+    # 7. AI analysis + forecast via Ollama (qwen2.5:14b)
+    log.info(f"  Generating AI analysis (Ollama)...")
     analysis = generate_analysis(ticker, price_data, technicals, sentiment, macro)
 
     # 8. Aggregate score — weighted: 40% technical, 35% sentiment, 25% macro

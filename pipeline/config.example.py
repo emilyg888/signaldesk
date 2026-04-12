@@ -13,10 +13,11 @@ WATCHLIST_FILE = ROOT / "data" / "watchlist.json"
 
 DEFAULT_WATCHLIST = ["AAPL", "NVDA", "TSLA", "BTC-USD", "EURUSD=X"]
 
-LM_STUDIO = {
-    "base_url":       "http://localhost:1234/v1",
-    "api_key":        "lm-studio",
-    "analysis_model": "qwen2.5-14b-instruct",
+OLLAMA = {
+    "base_url":       "http://localhost:11434/v1",
+    "api_key":        "ollama",
+    "analysis_model": "qwen2.5:14b",
+    "sentiment_model": "qwen2.5:14b",
     "temperature":    0.2,
     "max_tokens":     1200,
 }

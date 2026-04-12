@@ -35,15 +35,15 @@ try:
 except Exception as e:
     print(f"✗ StockTwits failed: {e}")
 
-# Test LM Studio
+# Test Ollama
 try:
     from openai import OpenAI
-    client = OpenAI(base_url="http://localhost:1234/v1", api_key="lm-studio")
+    client = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
     resp = client.chat.completions.create(
-        model="qwen2.5-14b-instruct",
+        model="qwen2.5:14b",
         messages=[{"role": "user", "content": "Reply with just the word: working"}],
         max_tokens=10
     )
-    print(f"✓ LM Studio — {resp.choices[0].message.content.strip()}")
+    print(f"✓ Ollama — {resp.choices[0].message.content.strip()}")
 except Exception as e:
-    print(f"✗ LM Studio failed: {e}")
+    print(f"✗ Ollama failed: {e}")

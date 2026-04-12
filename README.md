@@ -12,7 +12,7 @@ Each morning the pipeline:
 2. Computes technical indicators — RSI, MACD, EMA, Bollinger Bands, ATR, volume ratio
 3. Fetches recent news headlines (NewsAPI)
 4. Fetches macro indicators — Fed rate, CPI, GDP, VIX, DXY, 10Y yield (FRED + yfinance)
-5. Scores sentiment from headlines using Qwen2.5 14B via LM Studio (local, free)
+5. Scores sentiment from headlines using Qwen2.5 14B via Ollama (local, free)
 6. Generates a narrative analysis + 5-day forecast using the same local model
 7. Stores everything to SQLite
 8. Results available instantly in the dashboard at http://localhost:8000
@@ -27,7 +27,7 @@ Each morning the pipeline:
 | Price data | yfinance | Free, no key |
 | Macro data | FRED API | Free |
 | News | NewsAPI | Free (100 req/day) |
-| AI model | LM Studio + Qwen2.5-14B-Instruct Q6_K | Free, local |
+| AI model | Ollama + qwen2.5:14b | Free, local |
 | Database | SQLite | Free |
 | Backend | FastAPI + uvicorn | Free |
 
@@ -39,7 +39,7 @@ Monthly cost: ~$0
 
 - macOS (Apple Silicon M-series recommended)
 - Python 3.12 (via conda `dev` environment)
-- LM Studio with Qwen2.5-14B-Instruct Q6_K loaded
+- Ollama running locally with `qwen2.5:14b` pulled
 - FRED API key (free)
 - NewsAPI key (free)
 
@@ -74,12 +74,13 @@ cp pipeline/config.example.py pipeline/config.py
 code pipeline/config.py   # paste your FRED and NewsAPI keys
 ```
 
-**5. Set LM Studio model name**
+**5. Set Ollama model name**
 
-In `pipeline/config.py`, set `analysis_model` to match the model name
-shown in LM Studio's Local Server tab exactly (without the .gguf extension):
+In `pipeline/config.py`, set `analysis_model` and `sentiment_model`
+to the Ollama model tag you want to use:
 ```python
-"analysis_model": "qwen2.5-14b-instruct",
+"analysis_model": "qwen2.5:14b",
+"sentiment_model": "qwen2.5:14b",
 ```
 
 **6. Verify everything works**
@@ -91,7 +92,7 @@ Expected output:
 ✓ yfinance — AAPL: $xxx.xx
 ✓ FRED — Fed rate: x.xx%
 ✓ NewsAPI — found xxx articles
-✓ LM Studio — working
+✓ Ollama — working
 ```
 
 **7. Run the pipeline manually**
@@ -127,8 +128,8 @@ launchctl start com.signaldesk.pipeline
 tail -f logs/pipeline.log
 ```
 
-> LM Studio must be running at login. Add it to Login Items and enable
-> auto-start server so it's ready when launchd fires.
+> Ollama must be running at login so the local server is ready when
+> launchd fires.
 
 ---
 
@@ -145,10 +146,10 @@ signaldesk/
 │   ├── run_pipeline.py             # Main orchestrator
 │   ├── data_fetcher.py             # yfinance prices + FRED macro
 │   ├── technical.py                # RSI, MACD, EMA, BB, ATR, volume
-│   ├── sentiment.py                # LM Studio sentiment scoring
+│   ├── sentiment.py                # Ollama sentiment scoring
 │   ├── news_fetcher.py             # NewsAPI + yfinance fallback
 │   ├── social_fetcher.py           # Stub (extensible for future sources)
-│   ├── ai_analyst.py               # LM Studio narrative + forecast
+│   ├── ai_analyst.py               # Ollama narrative + forecast
 │   └── storage.py                  # SQLite read/write
 ├── api/
 │   └── server.py                   # FastAPI backend
@@ -181,30 +182,22 @@ Supported formats:
 
 ---
 
-## LM Studio settings (recommended)
+## Ollama setup (recommended)
 
-Model: Qwen2.5-14B-Instruct Q6_K (official Qwen release)
-
-| Setting | Value |
-|---------|-------|
-| Context Length | 16384 |
-| GPU Offload | 48 (all layers) |
-| CPU Thread Pool | 10 |
-| Eval Batch Size | 256 |
-| Max Concurrent Predictions | 1 |
-| Unified KV Cache | ON |
-| Offload KV Cache to GPU | ON |
-| Keep Model in Memory | ON |
+Pull the model:
+```bash
+ollama pull qwen2.5:14b
+```
 
 ---
 
 ## Troubleshooting
 
-**LM Studio not responding**
+**Ollama not responding**
 ```bash
-curl http://localhost:1234/v1/models
+curl http://localhost:11434/v1/models
 ```
-If no response, open LM Studio → Local Server tab → Start Server.
+If no response, start the Ollama server and confirm the model is installed with `ollama list`.
 
 **yfinance errors**
 ```bash

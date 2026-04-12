@@ -13,8 +13,8 @@ fredapi>=0.5.1
 newsapi-python>=0.2.7
 requests>=2.31.0
 
-# ── AI / LM Studio client ────────────────────────────────────────────────────
-openai>=1.14.0          # OpenAI-compatible client for LM Studio local API
+# ── AI / Ollama client ───────────────────────────────────────────────────────
+openai>=1.14.0          # OpenAI-compatible client for Ollama's local API
 
 # ── Backend ──────────────────────────────────────────────────────────────────
 fastapi>=0.110.0

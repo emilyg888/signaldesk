@@ -2,7 +2,7 @@
 Social sentiment fetcher — X (Twitter) API v2, pay-per-use.
 Searches for recent posts mentioning each ticker.
 Read-only. No posts are stored permanently — text is passed to
-LM Studio for sentiment scoring then discarded.
+Ollama for sentiment scoring then discarded.
 
 Cost estimate: ~$0.01 per tweet read, deduplicated per 24h UTC window.
 For 5 tickers × 50 tweets = ~$0.25/day = ~$7.50/month maximum.

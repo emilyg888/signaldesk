@@ -2,7 +2,7 @@
 System Integration Tests (SIT) — pipeline/run_pipeline.py
 Tests the full pipeline end-to-end with mocked external calls.
 Verifies all modules work together correctly.
-No real API calls, no real LM Studio calls, no file system side effects.
+No real API calls, no real Ollama calls, no file system side effects.
 """
 
 import sys
@@ -91,8 +91,8 @@ def mock_analysis_response():
 
 
 @pytest.fixture
-def mock_lm_studio():
-    """Mock LM Studio client — returns valid JSON for both calls."""
+def mock_ollama():
+    """Mock Ollama client — returns valid JSON for both calls."""
     with patch("pipeline.sentiment.client") as sent_client, \
          patch("pipeline.ai_analyst.client") as anal_client:
         sent_client.chat.completions.create.return_value = mock_sentiment_response()
@@ -116,7 +116,7 @@ def mock_external_data():
 
 class TestProcessTicker:
 
-    def test_returns_complete_result(self, mock_external_data, mock_lm_studio, tmp_path, monkeypatch):
+    def test_returns_complete_result(self, mock_external_data, mock_ollama, tmp_path, monkeypatch):
         import pipeline.storage as storage
         monkeypatch.setattr(storage, "DB_PATH", tmp_path / "test.db")
         from pipeline.run_pipeline import process_ticker
@@ -124,7 +124,7 @@ class TestProcessTicker:
         result = process_ticker("AAPL")
         assert result["ticker"] == "AAPL"
 
-    def test_result_has_all_required_keys(self, mock_external_data, mock_lm_studio, tmp_path, monkeypatch):
+    def test_result_has_all_required_keys(self, mock_external_data, mock_ollama, tmp_path, monkeypatch):
         import pipeline.storage as storage
         monkeypatch.setattr(storage, "DB_PATH", tmp_path / "test.db")
         from pipeline.run_pipeline import process_ticker
@@ -135,7 +135,7 @@ class TestProcessTicker:
         for key in required:
             assert key in result, f"Missing key: {key}"
 
-    def test_aggregate_score_in_range(self, mock_external_data, mock_lm_studio, tmp_path, monkeypatch):
+    def test_aggregate_score_in_range(self, mock_external_data, mock_ollama, tmp_path, monkeypatch):
         import pipeline.storage as storage
         monkeypatch.setattr(storage, "DB_PATH", tmp_path / "test.db")
         from pipeline.run_pipeline import process_ticker
@@ -143,7 +143,7 @@ class TestProcessTicker:
         result = process_ticker("AAPL")
         assert 0 <= result["aggregate_score"] <= 100
 
-    def test_aggregate_score_uses_weights(self, mock_external_data, mock_lm_studio, tmp_path, monkeypatch):
+    def test_aggregate_score_uses_weights(self, mock_external_data, mock_ollama, tmp_path, monkeypatch):
         """Verify aggregate = 40% tech + 35% sent + 25% macro."""
         import pipeline.storage as storage
         from pipeline.config import SETTINGS
@@ -158,7 +158,7 @@ class TestProcessTicker:
         expected = round(tech * w["technical"] + sent * w["sentiment"] + macro * w["macro"])
         assert result["aggregate_score"] == expected
 
-    def test_price_data_populated(self, mock_external_data, mock_lm_studio, tmp_path, monkeypatch):
+    def test_price_data_populated(self, mock_external_data, mock_ollama, tmp_path, monkeypatch):
         import pipeline.storage as storage
         monkeypatch.setattr(storage, "DB_PATH", tmp_path / "test.db")
         from pipeline.run_pipeline import process_ticker
@@ -167,7 +167,7 @@ class TestProcessTicker:
         assert result["price_data"]["current_price"] == 190.42
         assert result["price_data"]["change_pct"] == 0.80
 
-    def test_technicals_computed(self, mock_external_data, mock_lm_studio, tmp_path, monkeypatch):
+    def test_technicals_computed(self, mock_external_data, mock_ollama, tmp_path, monkeypatch):
         import pipeline.storage as storage
         monkeypatch.setattr(storage, "DB_PATH", tmp_path / "test.db")
         from pipeline.run_pipeline import process_ticker
@@ -176,7 +176,7 @@ class TestProcessTicker:
         assert result["technicals"]["rsi"] is not None
         assert "composite_score" in result["technicals"]
 
-    def test_sentiment_scored(self, mock_external_data, mock_lm_studio, tmp_path, monkeypatch):
+    def test_sentiment_scored(self, mock_external_data, mock_ollama, tmp_path, monkeypatch):
         import pipeline.storage as storage
         monkeypatch.setattr(storage, "DB_PATH", tmp_path / "test.db")
         from pipeline.run_pipeline import process_ticker
@@ -185,7 +185,7 @@ class TestProcessTicker:
         assert "composite_score" in result["sentiment"]
         assert result["sentiment"]["composite_score"] == 68
 
-    def test_analysis_generated(self, mock_external_data, mock_lm_studio, tmp_path, monkeypatch):
+    def test_analysis_generated(self, mock_external_data, mock_ollama, tmp_path, monkeypatch):
         import pipeline.storage as storage
         monkeypatch.setattr(storage, "DB_PATH", tmp_path / "test.db")
         from pipeline.run_pipeline import process_ticker
@@ -194,7 +194,7 @@ class TestProcessTicker:
         assert result["analysis"]["bias"] == "Bullish"
         assert len(result["analysis"]["forecast"]) == 5
 
-    def test_social_posts_is_list(self, mock_external_data, mock_lm_studio, tmp_path, monkeypatch):
+    def test_social_posts_is_list(self, mock_external_data, mock_ollama, tmp_path, monkeypatch):
         import pipeline.storage as storage
         monkeypatch.setattr(storage, "DB_PATH", tmp_path / "test.db")
         from pipeline.run_pipeline import process_ticker
@@ -207,7 +207,7 @@ class TestProcessTicker:
 
 class TestFullRun:
 
-    def test_processes_all_tickers(self, mock_external_data, mock_lm_studio, tmp_path, monkeypatch):
+    def test_processes_all_tickers(self, mock_external_data, mock_ollama, tmp_path, monkeypatch):
         import pipeline.storage as storage
         from pipeline import config
         monkeypatch.setattr(storage, "DB_PATH", tmp_path / "test.db")
@@ -218,7 +218,7 @@ class TestFullRun:
         results = run()
         assert len(results) == 3
 
-    def test_results_saved_to_db(self, mock_external_data, mock_lm_studio, tmp_path, monkeypatch):
+    def test_results_saved_to_db(self, mock_external_data, mock_ollama, tmp_path, monkeypatch):
         import pipeline.storage as storage
         from pipeline import config
         monkeypatch.setattr(storage, "DB_PATH", tmp_path / "test.db")
@@ -263,7 +263,7 @@ class TestFullRun:
         assert "NVDA" in tickers
         assert "BADTICKER" not in tickers
 
-    def test_all_tickers_correct_scores(self, mock_external_data, mock_lm_studio, tmp_path, monkeypatch):
+    def test_all_tickers_correct_scores(self, mock_external_data, mock_ollama, tmp_path, monkeypatch):
         import pipeline.storage as storage
         from pipeline import config
         monkeypatch.setattr(storage, "DB_PATH", tmp_path / "test.db")
@@ -275,7 +275,7 @@ class TestFullRun:
         for r in results:
             assert 0 <= r["aggregate_score"] <= 100
 
-    def test_empty_watchlist_returns_empty(self, mock_external_data, mock_lm_studio, tmp_path, monkeypatch):
+    def test_empty_watchlist_returns_empty(self, mock_external_data, mock_ollama, tmp_path, monkeypatch):
         import pipeline.storage as storage
         from pipeline import config
         monkeypatch.setattr(storage, "DB_PATH", tmp_path / "test.db")
@@ -291,7 +291,7 @@ class TestFullRun:
 
 class TestDataFlowIntegrity:
 
-    def test_ticker_preserved_through_pipeline(self, mock_external_data, mock_lm_studio, tmp_path, monkeypatch):
+    def test_ticker_preserved_through_pipeline(self, mock_external_data, mock_ollama, tmp_path, monkeypatch):
         import pipeline.storage as storage
         monkeypatch.setattr(storage, "DB_PATH", tmp_path / "test.db")
         from pipeline.run_pipeline import process_ticker
@@ -299,7 +299,7 @@ class TestDataFlowIntegrity:
         result = process_ticker("BTC-USD")
         assert result["ticker"] == "BTC-USD"
 
-    def test_run_date_is_valid_iso(self, mock_external_data, mock_lm_studio, tmp_path, monkeypatch):
+    def test_run_date_is_valid_iso(self, mock_external_data, mock_ollama, tmp_path, monkeypatch):
         import pipeline.storage as storage
         monkeypatch.setattr(storage, "DB_PATH", tmp_path / "test.db")
         from pipeline.run_pipeline import process_ticker
@@ -309,7 +309,7 @@ class TestDataFlowIntegrity:
         dt = datetime.fromisoformat(result["run_date"])
         assert dt.year >= 2025
 
-    def test_saved_result_retrievable(self, mock_external_data, mock_lm_studio, tmp_path, monkeypatch):
+    def test_saved_result_retrievable(self, mock_external_data, mock_ollama, tmp_path, monkeypatch):
         import pipeline.storage as storage
         monkeypatch.setattr(storage, "DB_PATH", tmp_path / "test.db")
         from pipeline.run_pipeline import process_ticker
@@ -321,7 +321,7 @@ class TestDataFlowIntegrity:
         assert retrieved["ticker"] == "AAPL"
         assert retrieved["aggregate_score"] == result["aggregate_score"]
 
-    def test_history_queryable_after_run(self, mock_external_data, mock_lm_studio, tmp_path, monkeypatch):
+    def test_history_queryable_after_run(self, mock_external_data, mock_ollama, tmp_path, monkeypatch):
         import pipeline.storage as storage
         from pipeline import config
         monkeypatch.setattr(storage, "DB_PATH", tmp_path / "test.db")

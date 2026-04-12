@@ -1,6 +1,6 @@
 """
 Unit tests — pipeline/config.py, social_fetcher.py, sentiment.py, ai_analyst.py
-Uses mocking to avoid LM Studio / API calls.
+Uses mocking to avoid Ollama / API calls.
 """
 
 import sys
@@ -27,10 +27,10 @@ class TestConfig:
         total = sum(weights.values())
         assert abs(total - 1.0) < 0.001, f"Weights sum to {total}, expected 1.0"
 
-    def test_lm_studio_has_required_keys(self):
-        from pipeline.config import LM_STUDIO
+    def test_ollama_has_required_keys(self):
+        from pipeline.config import OLLAMA
         for key in ["base_url", "api_key", "analysis_model", "temperature", "max_tokens"]:
-            assert key in LM_STUDIO, f"Missing LM_STUDIO key: {key}"
+            assert key in OLLAMA, f"Missing OLLAMA key: {key}"
 
     def test_api_keys_has_required_keys(self):
         from pipeline.config import API_KEYS
@@ -58,12 +58,12 @@ class TestConfig:
         assert loaded == tickers
 
     def test_temperature_in_valid_range(self):
-        from pipeline.config import LM_STUDIO
-        assert 0.0 <= LM_STUDIO["temperature"] <= 1.0
+        from pipeline.config import OLLAMA
+        assert 0.0 <= OLLAMA["temperature"] <= 1.0
 
     def test_max_tokens_positive(self):
-        from pipeline.config import LM_STUDIO
-        assert LM_STUDIO["max_tokens"] > 0
+        from pipeline.config import OLLAMA
+        assert OLLAMA["max_tokens"] > 0
 
     def test_lookback_days_sufficient_for_ema50(self):
         from pipeline.config import SETTINGS
@@ -197,7 +197,7 @@ class TestSentiment:
             result = score_sentiment([{"headline": "test"}], [], "AAPL")
         assert result["composite_score"] == 50
 
-    def test_lm_studio_exception_returns_neutral(self):
+    def test_ollama_exception_returns_neutral(self):
         from pipeline.sentiment import score_sentiment
         with patch("pipeline.sentiment.client") as mock_client:
             mock_client.chat.completions.create.side_effect = Exception("connection refused")

@@ -11,8 +11,8 @@
 | Macro indicators        | FRED API (free)                                       |
 | News headlines          | NewsAPI (free)                                        |
 | Technical analysis      | pandas-ta — RSI, MACD, EMA, BB, ATR, Stochastic       |
-| Sentiment scoring       | Qwen2.5 14B via LM Studio (local, free)               |
-| AI narrative + forecast | Qwen2.5 14B via LM Studio (local, free)               |
+| Sentiment scoring       | Qwen2.5 14B via Ollama (local, free)                  |
+| AI narrative + forecast | Qwen2.5 14B via Ollama (local, free)                  |
 | Storage                 | SQLite with duplicate-safe daily upsert               |
 | Backend                 | FastAPI on localhost:8000                             |
 | Dashboard               | Dark terminal UI — overview, detail, macro, watchlist |
@@ -22,7 +22,7 @@
 ## Daily Routine
 
 - Mac logs in → launchd fires the pipeline automatically
-- LM Studio must be running with server started (add to Login Items)
+- Ollama must be running with the local server available at login
 - Open `http://localhost:8000` anytime to see the latest analysis
 - Run `python -m pytest tests/ -v` after any code changes to verify nothing broke
 
@@ -53,9 +53,9 @@
            │               │    ┌──────────────┐          │
            │               │    │sentiment.py  │          │
            │               │    │              │          │
-           │               │    │LM Studio     │          │
-           │               │    │Qwen2.5 14B   │          │
-           │               │    │localhost:1234│          │
+           │               │    │Ollama        │          │
+           │               │    │qwen2.5:14b   │          │
+           │               │    │localhost:11434│         │
            │               │    │              │          │
            │               │    │News → score  │          │
            │               │    │0–100 + themes│          │
@@ -67,9 +67,9 @@
                     ┌────────────────────────┐
                     │    ai_analyst.py       │
                     │                        │
-                    │    LM Studio           │
-                    │    Qwen2.5 14B         │
-                    │    localhost:1234      │
+                    │    Ollama              │
+                    │    qwen2.5:14b         │
+                    │    localhost:11434     │
                     │                        │
                     │  Input: tech scores +  │
                     │  sentiment + macro     │
@@ -110,7 +110,7 @@
 yfinance (price)  ──►  technical.py  ──►  composite tech score (0–100)
                                                           │
 NewsAPI (news)    ──►  sentiment.py  ──►  sentiment score (0–100)
-                       (LM Studio)                        │
+                       (Ollama)                           │
                                                           │
 FRED + yfinance   ──►  macro score   ──►  macro score (0–100)
 (macro)                                                   │
@@ -120,7 +120,7 @@ FRED + yfinance   ──►  macro score   ──►  macro score (0–100)
                                                           │
                                                           ▼
                                               ai_analyst.py
-                                              (LM Studio Qwen2.5 14B)
+                                              (Ollama qwen2.5:14b)
                                                           │
                                                           ▼
                                            ┌──────────────────────────┐
@@ -145,8 +145,8 @@ FRED + yfinance   ──►  macro score   ──►  macro score (0–100)
 | `pipeline/technical.py`                   | RSI, MACD, EMA cross, Bollinger Bands, ATR, volume |
 | `pipeline/news_fetcher.py`                | NewsAPI headlines with yfinance fallback           |
 | `pipeline/social_fetcher.py`              | Stub — extensible for future social sources        |
-| `pipeline/sentiment.py`                   | LM Studio sentiment scoring from news headlines    |
-| `pipeline/ai_analyst.py`                  | LM Studio narrative generation + 5-day forecast    |
+| `pipeline/sentiment.py`                   | Ollama sentiment scoring from news headlines       |
+| `pipeline/ai_analyst.py`                  | Ollama narrative generation + 5-day forecast       |
 | `pipeline/storage.py`                     | SQLite schema, read/write, history queries         |
 | `api/server.py`                           | FastAPI REST endpoints for dashboard               |
 | `dashboard/index.html`                    | Browser frontend                                   |
@@ -161,7 +161,7 @@ FRED + yfinance   ──►  macro score   ──►  macro score (0–100)
 | yfinance  | Yahoo Finance      | None           | Price, OHLCV, basic news |
 | FRED      | api.stlouisfed.org | API key (free) | Fed rate, CPI, GDP       |
 | NewsAPI   | newsapi.org        | API key (free) | News headlines           |
-| LM Studio | localhost:1234     | None (local)   | AI analysis + sentiment  |
+| Ollama    | localhost:11434    | None (local)   | AI analysis + sentiment  |
 
 Twitter/X, Reddit, StockTwits — evaluated and dropped (paid or network-blocked).
 
@@ -175,8 +175,8 @@ Twitter/X, Reddit, StockTwits — evaluated and dropped (paid or network-blocked
 | RAM          | 32 GB unified memory                    |
 | Python       | 3.12.12 (via miniconda `dev` env)       |
 | venv         | `.venv` at project root                 |
-| Model        | Qwen2.5-14B-Instruct Q6_K (~12.1GB)     |
-| Model host   | LM Studio (localhost:1234)              |
+| Model        | qwen2.5:14b                              |
+| Model host   | Ollama (localhost:11434)                |
 | DB           | SQLite at `data/db/signaldesk.db`       |
 | Project root | `~/LocalDocuments/Projects/signaldesk/` |
 

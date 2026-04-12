@@ -1,5 +1,5 @@
 """
-Sentiment scoring using LM Studio (local, free).
+Sentiment scoring using Ollama (local, free).
 Sources:
   - NewsAPI headlines  (always available, 100% weight when X unavailable)
   - X posts            (when Bearer Token configured, blended in)
@@ -13,13 +13,13 @@ Weighting when only news:
 import logging
 import json
 from openai import OpenAI
-from pipeline.config import LM_STUDIO, API_KEYS
+from pipeline.config import OLLAMA, API_KEYS
 
 log = logging.getLogger(__name__)
 
 client = OpenAI(
-    base_url=LM_STUDIO["base_url"],
-    api_key=LM_STUDIO["api_key"],
+    base_url=OLLAMA["base_url"],
+    api_key=OLLAMA["api_key"],
 )
 
 SYSTEM_PROMPT = """You are a financial sentiment analyser.
@@ -31,7 +31,7 @@ Where 0=extremely bearish, 50=neutral, 100=extremely bullish."""
 
 def score_sentiment(news_items: list, social_posts: list, ticker: str) -> dict:
     """
-    Score sentiment from news headlines and X posts via LM Studio.
+    Score sentiment from news headlines and X posts via Ollama.
     Blends sources based on availability.
     """
     has_x = bool(social_posts)
@@ -94,7 +94,7 @@ def _score_batch(items: list, text_field: str, ticker: str, source_name: str) ->
 
     try:
         resp = client.chat.completions.create(
-            model=LM_STUDIO["analysis_model"],
+            model=OLLAMA["sentiment_model"],
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user",   "content": user_msg},
@@ -113,8 +113,8 @@ def _score_batch(items: list, text_field: str, ticker: str, source_name: str) ->
         }
 
     except json.JSONDecodeError as e:
-        log.warning(f"  LM Studio returned non-JSON for {source_name}/{ticker}: {e}")
+        log.warning(f"  Ollama returned non-JSON for {source_name}/{ticker}: {e}")
         return {"score": 50, "label": "Neutral", "key_themes": []}
     except Exception as e:
-        log.error(f"  LM Studio call failed for {source_name}/{ticker}: {e}")
+        log.error(f"  Ollama call failed for {source_name}/{ticker}: {e}")
         return {"score": 50, "label": "Neutral", "key_themes": []}
